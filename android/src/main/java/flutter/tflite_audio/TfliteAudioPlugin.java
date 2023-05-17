@@ -774,19 +774,13 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
             handler.post(runnable);
     }
 
-    private void startRecognitionMFCC(short[] _inputBuffer16) {
+    private void startRecognitionMFCC(float[][] mfcc2D) {
         Log.v(LOG_TAG, "Recognition MFCC started.");
 
         if (events == null) {
             return;
         }
-
-        SignalProcessing signalProcessing = new SignalProcessing();
-        AudioProcessing audioData = new AudioProcessing();
-
-        float[] inputBuffer32; //for spectro
-        float[][] inputData2D; //for raw audio
-
+        
         int[] outputShape = tfLite.getOutputTensor(0).shape();
         int outputSize = Arrays.stream(outputShape).max().getAsInt();
         float[][] outputTensor = new float[1][outputSize];
@@ -795,14 +789,7 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
 
         long startTime = new Date().getTime();
 
-        inputBuffer32 = audioData.normalizeBySigned16(inputBuffer16);
-        float[][] mfcc = signalProcessing.getMFCC(inputBuffer32);
-
-        inputData2D = transposeSpectro
-                ? signalProcessing.transpose2D(mfcc)
-                : mfcc;
-
-        tfLite.run(inputData2D, outputTensor);
+        tfLite.run(mfcc2D, outputTensor);
 
         // working recognition variables
         long lastProcessingTimeMs = new Date().getTime() - startTime;
