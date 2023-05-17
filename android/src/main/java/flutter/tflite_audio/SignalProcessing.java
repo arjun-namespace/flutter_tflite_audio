@@ -45,8 +45,8 @@ import android.util.Log;
 */
 
 
-public class SignalProcessing{
-    
+public class SignalProcessing {
+
     private static final String LOG_TAG = "Signal_Processing";
     private JLibrosa jLibrosa = new JLibrosa();
     private AudioFeatureExtraction featureExtractor = new AudioFeatureExtraction();
@@ -57,73 +57,79 @@ public class SignalProcessing{
     private int nFFT;
     private int nMels;
     private int hopLength;
-   
-    public SignalProcessing(int sampleRate, int nMFCC, int nFFT, int nMels, int hopLength){
+
+    public SignalProcessing(int sampleRate, int nMFCC, int nFFT, int nMels, int hopLength) {
         this.sampleRate = sampleRate;
         this.nMFCC = nMFCC;
         this.nFFT = nFFT;
         this.nMels = nMels;
         this.hopLength = hopLength;
-    };
+    }
 
+    public SignalProcessing() {
+        this.sampleRate = 22050;
+        this.nMFCC = 40;
+        this.nFFT = 2048;
+        this.nMels = 40;
+        this.hopLength = 512;
+    }
 
-    public float [][] getMFCC(float [] inputBuffer32){
-        float [][] MFCC = jLibrosa.generateMFCCFeatures(inputBuffer32, sampleRate, nMFCC, nFFT, nMels, hopLength);
+    public float[][] getMFCC(float[] inputBuffer32) {
+        float[][] MFCC = jLibrosa.generateMFCCFeatures(inputBuffer32, sampleRate, nMFCC, nFFT, nMels, hopLength);
         if (showPreprocessLogs) displayShape(MFCC);
         return MFCC;
     }
 
-    public float [][] getMelSpectrogram(float [] inputBuffer32){
-        float [][] melSpectrogram = jLibrosa.generateMelSpectroGram(inputBuffer32, sampleRate, nFFT, nMels, hopLength);
+    public float[][] getMelSpectrogram(float[] inputBuffer32) {
+        float[][] melSpectrogram = jLibrosa.generateMelSpectroGram(inputBuffer32, sampleRate, nFFT, nMels, hopLength);
         if (showPreprocessLogs) displayShape(melSpectrogram);
         return melSpectrogram;
     }
-    
-    public float[][] getSpectrogram(float [] inputBuffer32){
-        featureExtractor.setSampleRate(sampleRate);
-		featureExtractor.setN_mfcc(nMFCC);
-        featureExtractor.setN_fft(nFFT);
-		featureExtractor.setN_mels(nMels);
-		featureExtractor.setHop_length(hopLength);
 
-        Complex [][] stft = featureExtractor.extractSTFTFeaturesAsComplexValues(inputBuffer32, true);
-        //float [][] spectrogram = getSpectroAbsVal(stft);
-        float [][] spectrogram = getFloatABSValue(stft);
+    public float[][] getSpectrogram(float[] inputBuffer32) {
+        featureExtractor.setSampleRate(sampleRate);
+        featureExtractor.setN_mfcc(nMFCC);
+        featureExtractor.setN_fft(nFFT);
+        featureExtractor.setN_mels(nMels);
+        featureExtractor.setHop_length(hopLength);
+
+        Complex[][] stft = featureExtractor.extractSTFTFeaturesAsComplexValues(inputBuffer32, true);
+        float[][] spectrogram = getFloatABSValue(stft);
         if (showPreprocessLogs) displayShape(spectrogram);
         return spectrogram;
     }
 
-    private float [][] getFloatABSValue(Complex [][] spectro){
+    private float[][] getFloatABSValue(Complex[][] spectro) {
 
         float[][] spectroAbsVal = new float[spectro.length][spectro[0].length];
-		
-		for(int i=0;i<spectro.length;i++) {
-			for(int j=0;j<spectro[0].length;j++) {
-				Complex complexVal = spectro[i][j];
-				spectroAbsVal[i][j] = (float) complexVal.abs();
-			}
-		}
+
+        for (int i = 0; i < spectro.length; i++) {
+            for (int j = 0; j < spectro[0].length; j++) {
+                Complex complexVal = spectro[i][j];
+                spectroAbsVal[i][j] = (float) complexVal.abs();
+            }
+        }
 
         return spectroAbsVal;
     }
 
 
-    private float [][] getSpectroAbsVal(Complex [][] spectro){
+    private float[][] getSpectroAbsVal(Complex[][] spectro) {
 
         float[][] spectroAbsVal = new float[spectro.length][spectro[0].length];
-		
-		for(int i=0;i<spectro.length;i++) {
-			for(int j=0;j<spectro[0].length;j++) {
-				Complex complexVal = spectro[i][j];
-				float spectroDblVal = (float) Math.sqrt((Math.pow(complexVal.getReal(), 2) + Math.pow(complexVal.getImaginary(), 2)));
-				spectroAbsVal[i][j] = (float) Math.pow(spectroDblVal,2);
-			}
-		}
+
+        for (int i = 0; i < spectro.length; i++) {
+            for (int j = 0; j < spectro[0].length; j++) {
+                Complex complexVal = spectro[i][j];
+                float spectroDblVal = (float) Math.sqrt((Math.pow(complexVal.getReal(), 2) + Math.pow(complexVal.getImaginary(), 2)));
+                spectroAbsVal[i][j] = (float) Math.pow(spectroDblVal, 2);
+            }
+        }
 
         return spectroAbsVal;
     }
 
-    private void displayShape(float [][] spectro){
+    private void displayShape(float[][] spectro) {
         Log.d(LOG_TAG, "Spectro " + Arrays.toString(spectro[0]));
         Log.d(LOG_TAG, "1. Mel Bin " + spectro.length);
         Log.d(LOG_TAG, "2. Frames " + spectro[0].length);
@@ -144,26 +150,26 @@ public class SignalProcessing{
         return floatOutput;
     }
 
-    public float[][] transpose2D(float[][] matrix){
-	    int m = matrix.length;
-	    int n = matrix[0].length;
+    public float[][] transpose2D(float[][] matrix) {
+        int m = matrix.length;
+        int n = matrix[0].length;
 
-	    float[][] transposedMatrix = new float[n][m];
+        float[][] transposedMatrix = new float[n][m];
 
-	    for(int x = 0; x < n; x++) {
-	        for(int y = 0; y < m; y++) {
-	            transposedMatrix[x][y] = matrix[y][x];
-	        }
-	    }
-	    return transposedMatrix;
-	}
+        for (int x = 0; x < n; x++) {
+            for (int y = 0; y < m; y++) {
+                transposedMatrix[x][y] = matrix[y][x];
+            }
+        }
+        return transposedMatrix;
+    }
 
-    public float[][][][] reshapeTo4D(float [][] spectrogram){
+    public float[][][][] reshapeTo4D(float[][] spectrogram) {
 
         int FRAMES = spectrogram.length;
         int MEL_BINS = spectrogram[0].length;
         float[][][][] inputTensor = new float[1][FRAMES][MEL_BINS][1];
-     
+
 
         for (int frame = 0; frame < FRAMES; frame++) {
             for (int freq = 0; freq < MEL_BINS; freq++) {
@@ -173,14 +179,14 @@ public class SignalProcessing{
 
         return inputTensor;
     }
-    
 
-    public float[][][][] reshapeTo4DAndTranspose(float [][] spectrogram){
+
+    public float[][][][] reshapeTo4DAndTranspose(float[][] spectrogram) {
 
         int FRAMES = spectrogram.length;
         int MEL_BINS = spectrogram[0].length;
         float[][][][] inputTensor = new float[1][FRAMES][MEL_BINS][1];
-     
+
 
         for (int frame = 0; frame < FRAMES; frame++) {
             for (int freq = 0; freq < MEL_BINS; freq++) {

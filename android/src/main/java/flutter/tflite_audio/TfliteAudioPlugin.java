@@ -93,7 +93,7 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
     private Recording recording;
 
     // input/output variables
-    private int [] inputShape;
+    private int[] inputShape;
     // private int [] outputShape;
     private int audioLength;
     private boolean transposeAudio;
@@ -240,7 +240,7 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
                 this.bufferSize = (int) arguments.get("bufferSize");
                 this.sampleRate = (int) arguments.get("sampleRate");
                 this.numOfInferences = (int) arguments.get("numOfInferences");
-                this.audioLength = determineInput(arguments); 
+                this.audioLength = determineInput(arguments);
                 this.transposeAudio = determineAudio();
                 checkPermissions(REQUEST_RECORD_AUDIO);
                 break;
@@ -262,31 +262,26 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         int audioLength = (int) arguments.get("audioLength");
         boolean hasValue = audioLength > 0;
         boolean isAudioInput = inputType.equals("rawAudio") || inputType.equals("decodedWav");
-        
-        if(hasValue){
+
+        if (hasValue) {
             Log.d(LOG_TAG, "AudioLength does not need to be adjusted. Length: " + audioLength);
             return audioLength;
-        }
-
-        else if(isAudioInput){
+        } else if (isAudioInput) {
             int newAudioLength = Arrays.stream(inputShape).reduce(1, (subtotal, element) -> subtotal * element);
             Log.d(LOG_TAG, "AudioLength has been readjusted. Length: " + newAudioLength);
             return newAudioLength;
-        }
-
-        else {
+        } else {
             Log.d(LOG_TAG, "Warning: Unspecified audio length may cause unintended problems with spectro models");
             Log.d(LOG_TAG, "AudioLength: " + sampleRate);
             return sampleRate;
         }
     }
 
-
-    private boolean determineAudio(){
+    private boolean determineAudio() {
 
         boolean isAudioInput = inputType.equals("rawAudio") || inputType.equals("decodedWav");
-    
-        if(isAudioInput){ 
+
+        if (isAudioInput) {
             //TODO - Assert length is 2, and is not stereo
             //need to have try and catch
             // int shape = Arrays.stream(inputShape).reduce(0, (count, element) -> count + 1); --- DOES NOT WORK
@@ -303,13 +298,12 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         }
     }
 
-
     @Override
     public void onCancel(Object _arguments) {
         this.events = null;
     }
 
-    private void loadModel(){
+    private void loadModel() {
         Log.d(LOG_TAG, "model name is: " + modelPath);
         boolean isAsset = this.isAssetObj != null && (boolean) isAssetObj;
         MappedByteBuffer buffer;
@@ -341,7 +335,7 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
 
         this.inputShape = tfLite.getInputTensor(0).shape();
         Log.d(LOG_TAG, "inputShape: " + Arrays.toString(inputShape));
-        
+
         // load labels
         Log.d(LOG_TAG, "label name is: " + labelPath);
 
@@ -421,11 +415,11 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         switch (permissionType) {
             case REQUEST_RECORD_AUDIO:
                 ActivityCompat.requestPermissions(activity,
-                        new String[] { android.Manifest.permission.RECORD_AUDIO }, REQUEST_RECORD_AUDIO);
+                        new String[]{android.Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO);
                 break;
             case REQUEST_READ_EXTERNAL_STORAGE:
                 ActivityCompat.requestPermissions(activity,
-                        new String[] { android.Manifest.permission.READ_EXTERNAL_STORAGE },
+                        new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE},
                         REQUEST_READ_EXTERNAL_STORAGE);
                 break;
             default:
@@ -558,10 +552,10 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         audioFile = new AudioFile(byteData, audioLength);
         audioFile.getObservable()
                 .doOnComplete(() -> {
-                    stopStream(); 
+                    stopStream();
                     clearPreprocessing();
                 })
-                .subscribe(this::startRecognition);
+                .subscribe(this::startRecognitionMFCC);
         audioFile.splice();
     }
 
@@ -586,9 +580,9 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
                 .doOnComplete(() -> {
                     stopStream();
                     clearRecording();
-                    })
-                .subscribe(this::startRecognition);
-         
+                })
+                .subscribe(this::startRecognitionMFCC);
+
         recording.start();
     }
 
@@ -602,17 +596,17 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         SignalProcessing signalProcessing = new SignalProcessing(sampleRate, nMFCC, nFFT, nMels, hopLength);
         AudioProcessing audioData = new AudioProcessing();
 
-        float [] inputBuffer32; //for spectro
-        float [][] inputData2D; //for raw audio
-        float [][][][] inputData4D; // for spectro
-        Object [] inputArray;
+        float[] inputBuffer32; //for spectro
+        float[][] inputData2D; //for raw audio
+        float[][][][] inputData4D; // for spectro
+        Object[] inputArray;
 
-        int [] outputShape = tfLite.getOutputTensor(0).shape();
+        int[] outputShape = tfLite.getOutputTensor(0).shape();
         int outputSize = Arrays.stream(outputShape).max().getAsInt();
-        float [][] outputTensor = new float [1][outputSize];
+        float[][] outputTensor = new float[1][outputSize];
         Map<Integer, Object> outputMap = new HashMap<>();
-     
-        
+
+
         Map<String, Object> finalResults = new HashMap();
 
         long startTime = new Date().getTime();
@@ -620,49 +614,49 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         switch (inputType) {
 
             case "mfcc":
-      
+
                 inputBuffer32 = audioData.normalizeBySigned16(inputBuffer16);
                 float[][] mfcc = signalProcessing.getMFCC(inputBuffer32);
 
                 inputData2D = transposeSpectro
-                    ? signalProcessing.transpose2D(mfcc)
-                    : mfcc;
+                        ? signalProcessing.transpose2D(mfcc)
+                        : mfcc;
 
                 tfLite.run(inputData2D, outputTensor);
                 break;
 
             case "melSpectrogram":
-              
+
                 inputBuffer32 = audioData.normalizeBySigned16(inputBuffer16);
                 float[][] melSpectrogram = signalProcessing.getMelSpectrogram(inputBuffer32);
-                
+
                 inputData4D = transposeSpectro
-                    ? signalProcessing.reshapeTo4DAndTranspose(melSpectrogram)
-                    : signalProcessing.reshapeTo4D(melSpectrogram);
-                    
+                        ? signalProcessing.reshapeTo4DAndTranspose(melSpectrogram)
+                        : signalProcessing.reshapeTo4D(melSpectrogram);
+
                 tfLite.run(inputData4D, outputTensor);
                 break;
 
             case "spectrogram":
-           
+
                 inputBuffer32 = audioData.normalizeBySigned16(inputBuffer16);
                 float[][] spectrogram = signalProcessing.getSpectrogram(inputBuffer32);
-            
+
                 inputData4D = transposeSpectro
-                    ? signalProcessing.reshapeTo4DAndTranspose(spectrogram)
-                    : signalProcessing.reshapeTo4D(spectrogram);
+                        ? signalProcessing.reshapeTo4DAndTranspose(spectrogram)
+                        : signalProcessing.reshapeTo4D(spectrogram);
 
                 tfLite.run(inputData4D, outputTensor);
                 break;
 
             case "decodedWav":
-                
-                inputData2D = transposeAudio 
-                    ? audioData.normaliseAndTranspose(inputBuffer16) 
-                    : audioData.normalise(inputBuffer16);
-                     
-                int [] sampleRateList = new int[] { sampleRate }; 
-                inputArray = new Object[] { inputData2D, sampleRateList};
+
+                inputData2D = transposeAudio
+                        ? audioData.normaliseAndTranspose(inputBuffer16)
+                        : audioData.normalise(inputBuffer16);
+
+                int[] sampleRateList = new int[]{sampleRate};
+                inputArray = new Object[]{inputData2D, sampleRateList};
 
                 outputMap.put(0, outputTensor);
                 tfLite.runForMultipleInputsOutputs(inputArray, outputMap);
@@ -670,9 +664,9 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
 
             case "rawAudio":
 
-                inputData2D = transposeAudio 
-                    ? audioData.normaliseAndTranspose(inputBuffer16) 
-                    : audioData.normalise(inputBuffer16);
+                inputData2D = transposeAudio
+                        ? audioData.normaliseAndTranspose(inputBuffer16)
+                        : audioData.normalise(inputBuffer16);
 
                 tfLite.run(inputData2D, outputTensor);
                 break;
@@ -682,7 +676,7 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         // working recognition variables
         long lastProcessingTimeMs = new Date().getTime() - startTime;
         Log.v(LOG_TAG, "Raw Scores: " + Arrays.toString(outputTensor[0]));
-   
+
         if (!outputRawScores) {
             LabelSmoothing labelSmoothing = new LabelSmoothing(
                     labels,
@@ -725,13 +719,13 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
     }
 
     public void forceStop() {
-           
+
         stopRecording();
         stopPreprocessing();
         //no need to have stop stream here, as it is called when observable is onComplete()
     }
 
-    public void stopRecording(){
+    public void stopRecording() {
         if (recordingThread == null) {
             Log.d(LOG_TAG, "There is no ongoing recording. Breaking.");
             return;
@@ -751,7 +745,6 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
         recordingThread = null;
         Log.d(LOG_TAG, "Recording stopped.");
     }
-
 
     public void stopPreprocessing() {
         if (preprocessThread == null) {
@@ -779,6 +772,62 @@ public class TfliteAudioPlugin implements MethodCallHandler, StreamHandler, Flut
             runnable.run();
         else
             handler.post(runnable);
+    }
+
+    private void startRecognitionMFCC(short[] _inputBuffer16) {
+        Log.v(LOG_TAG, "Recognition MFCC started.");
+
+        if (events == null) {
+            return;
+        }
+
+        SignalProcessing signalProcessing = new SignalProcessing();
+        AudioProcessing audioData = new AudioProcessing();
+
+        float[] inputBuffer32; //for spectro
+        float[][] inputData2D; //for raw audio
+
+        int[] outputShape = tfLite.getOutputTensor(0).shape();
+        int outputSize = Arrays.stream(outputShape).max().getAsInt();
+        float[][] outputTensor = new float[1][outputSize];
+
+        Map<String, Object> finalResults = new HashMap();
+
+        long startTime = new Date().getTime();
+
+        inputBuffer32 = audioData.normalizeBySigned16(inputBuffer16);
+        float[][] mfcc = signalProcessing.getMFCC(inputBuffer32);
+
+        inputData2D = transposeSpectro
+                ? signalProcessing.transpose2D(mfcc)
+                : mfcc;
+
+        tfLite.run(inputData2D, outputTensor);
+
+        // working recognition variables
+        long lastProcessingTimeMs = new Date().getTime() - startTime;
+        Log.v(LOG_TAG, "Raw Scores: " + Arrays.toString(outputTensor[0]));
+
+        if (!outputRawScores) {
+            LabelSmoothing labelSmoothing = new LabelSmoothing(
+                    labels,
+                    averageWindowDuration,
+                    detectionThreshold,
+                    suppressionTime,
+                    minimumTimeBetweenSamples);
+
+            long currentTime = System.currentTimeMillis();
+            final LabelSmoothing.RecognitionResult recognitionResult = labelSmoothing
+                    .processLatestResults(outputTensor[0], currentTime);
+            finalResults.put("recognitionResult", recognitionResult.foundCommand);
+        } else {
+            finalResults.put("recognitionResult", Arrays.toString(outputTensor[0]));
+        }
+
+        finalResults.put("inferenceTime", lastProcessingTimeMs);
+        finalResults.put("hasPermission", true);
+
+        getResult(finalResults);
     }
 
 }
